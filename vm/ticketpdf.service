@@ -1,0 +1,48 @@
+# /etc/systemd/system/ticketpdf.service
+[Unit]
+Description=FlashTicket ticketpdf
+After=network-online.target
+
+[Service]
+User=ticketpdf
+Group=ticketpdf
+ExecStart=/opt/ticketpdf/bin/ticketpdf
+Restart=always
+RestartSec=2
+
+# Fichiers
+ProtectSystem=strict
+ReadWritePaths=/var/lib/ticketpdf
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+UMask=0027
+
+# Noyau
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectKernelLogs=yes
+ProtectControlGroups=yes
+ProtectProc=invisible
+ProcSubset=pid
+ProtectHostname=yes
+ProtectClock=yes
+
+# Privilèges (port 8443 > 1024 : aucune capacité nécessaire)
+NoNewPrivileges=yes
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictRealtime=yes
+
+# Appels système et réseau
+SystemCallFilter=@system-service
+SystemCallFilter=~@privileged @resources
+SystemCallArchitectures=native
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+MemoryDenyWriteExecute=yes
+
+[Install]
+WantedBy=multi-user.target
