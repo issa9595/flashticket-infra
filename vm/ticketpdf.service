@@ -2,6 +2,8 @@
 [Unit]
 Description=FlashTicket ticketpdf
 After=network-online.target
+# Bonus LUKS : attendre que le volume chiffré soit monté (sinon écriture sur le disque en clair)
+RequiresMountsFor=/var/lib/ticketpdf
 
 [Service]
 User=ticketpdf

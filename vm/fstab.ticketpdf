@@ -1,0 +1,3 @@
+# Ligne ajoutée à /etc/fstab : monte le volume déchiffré sur le dossier des billets.
+# nodev,nosuid,noexec : on n'y range que des PDF, rien ne doit s'y exécuter.
+/dev/mapper/ticketpdf_data  /var/lib/ticketpdf  ext4  defaults,nodev,nosuid,noexec  0  2

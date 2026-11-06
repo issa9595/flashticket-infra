@@ -11,6 +11,7 @@ Accès : `ssh -i ~/.ssh/flashticket_td1_ed25519 deploy@192.168.252.3` (seul comp
 | Lynis, indice de durcissement | **59** | **78** (+19) |
 | `systemd-analyze security ticketpdf.service` | **9.2 UNSAFE** | **1.3 OK** |
 | `scripts/verify-td1.sh` | | 27 OK, 0 KO |
+| Bonus LUKS (`/var/lib/ticketpdf`) | en clair | **chiffré** (LUKS2, aes-xts) |
 
 ## Partie A : VM minimale et accès SSH
 
@@ -132,7 +133,36 @@ flowchart LR
 
 Si la file est chiffrée avec une clé KMS gérée par le client (et non SSE-SQS), ajouter `kms:GenerateDataKey` (producteur) et `kms:Decrypt` (consommateur) sur l'ARN de cette clé.
 
-## Non fait
+## Bonus : `/var/lib/ticketpdf` chiffré avec LUKS sur fichier
 
-- Bonus LUKS sur fichier pour `/var/lib/ticketpdf`.
+Conteneur `/var/lib/ticketpdf.luks` (256 Mo, 0600 root), au format **LUKS2**, chiffré en `aes-xts-plain64` avec une clé dérivée par `argon2id`. Il est ouvert sous `/dev/mapper/ticketpdf_data` (ext4) et monté sur `/var/lib/ticketpdf` avec `nodev,nosuid,noexec`.
+
+```bash
+head -c 64 /dev/urandom > /etc/luks-keys/ticketpdf.key   # 0400, dossier 0700
+fallocate -l 256M /var/lib/ticketpdf.luks
+cryptsetup luksFormat --type luks2 --key-file /etc/luks-keys/ticketpdf.key /var/lib/ticketpdf.luks
+cryptsetup open --key-file /etc/luks-keys/ticketpdf.key /var/lib/ticketpdf.luks ticketpdf_data
+mkfs.ext4 -L ticketpdf /dev/mapper/ticketpdf_data
+# service arrêté : copie des billets existants (cp -a), vérifiée par diff, puis montage
+```
+
+- **Au démarrage** : `vm/crypttab` (ligne de `/etc/crypttab`) ouvre le conteneur ; systemd crée lui-même le périphérique loop. `vm/fstab.ticketpdf` (ligne de `/etc/fstab`) le monte.
+- **Unité** : `RequiresMountsFor=/var/lib/ticketpdf` ajouté à `vm/ticketpdf.service`, pour que le service ne démarre jamais avant le montage et n'écrive pas sur le disque en clair. Le score systemd reste à **1.3**.
+- **Après redémarrage** : volume ouvert (`cryptsetup status` : LUKS2, `/dev/loop0`), monté, service actif, AppArmor en enforce.
+
+Preuve du chiffrement : un billet témoin est créé avec `holder` = `PREUVELUKS`.
+
+```
+mot PREUVELUKS dans le volume déchiffré (/dev/mapper) : 1
+mot PREUVELUKS dans le fichier brut sur disque (.luks)  : 0
+signature %PDF dans le fichier brut                     : 0
+faille /debug/read -> /etc/luks-keys/ticketpdf.key : 403
+faille /debug/read -> /var/lib/ticketpdf.luks      : 403
+```
+
+> Limite assumée : la clé est sur le même disque que le conteneur, pour un déverrouillage automatique au démarrage. Cela protège une copie ou une sauvegarde du seul fichier `.luks`, pas un vol du disque entier. En production, il faudrait une phrase de passe saisie au démarrage, ou une clé fournie par un TPM ou un KMS. Les anciens PDF en clair supprimés de la partition racine peuvent aussi y laisser des traces jusqu'à ce que l'espace soit réécrit.
+
+## À savoir
+
 - `verify-td1.sh` lit le score systemd avec `$(NF-1)`, ce qui renvoie le mot `OK` au lieu du nombre sous Ubuntu 24.04 ; le vrai score est **1.3**.
+- Le contrôle « refus tracé » lit le journal noyau du démarrage en cours. Après un redémarrage de la VM, il faut d'abord provoquer un refus AppArmor (`curl -k 'https://localhost:8443/debug/read?path=/etc/passwd'`), puis lancer le script.

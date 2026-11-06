@@ -1,0 +1,3 @@
+# /etc/crypttab : ouvre le conteneur LUKS des billets au démarrage
+# (systemd-cryptsetup crée lui-même le périphérique loop pour un fichier)
+ticketpdf_data  /var/lib/ticketpdf.luks  /etc/luks-keys/ticketpdf.key  luks
