@@ -1,4 +1,4 @@
-# /etc/apparmor.d/opt.ticketpdf.bin.ticketpdf
+# À installer sous /etc/apparmor.d/opt.ticketpdf.bin.ticketpdf (sans le suffixe .apparmor)
 #include <tunables/global>
 
 /opt/ticketpdf/bin/ticketpdf {
