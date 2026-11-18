@@ -75,6 +75,8 @@ def reserve(order, now):
         if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
             raise InFlightElsewhere(f"clé {key} reprise par un autre traitement") from exc
         raise
+    log("warn", "reprise après plantage", correlationId=order.get("correlationId"), idempotencyKey=key,
+        orderId=item["orderId"]["S"], abandonedSince=now - started)
     return item["orderId"]["S"]
 
 
@@ -92,8 +94,6 @@ def process_message(order):
     if order_id is None:
         log("info", "doublon ignoré", correlationId=cid, idempotencyKey=order["idempotencyKey"])
         return
-    if order_id != order["orderId"]:
-        log("warn", "reprise après plantage", correlationId=cid, orderId=order_id)
 
     # 2. Écrire la commande. Même orderId à la reprise : la ligne est réécrite, pas dupliquée.
     dynamodb.put_item(TableName=TABLE_ORDERS, Item={
@@ -119,9 +119,18 @@ def process_message(order):
     log("info", "commande traitée", correlationId=cid, orderId=order_id)
 
 
+def correlation_of(record):
+    try:
+        return json.loads(record["body"]).get("correlationId")
+    except Exception:  # noqa: BLE001 : message illisible, traité plus bas
+        return None
+
+
 def handler(event, context):
     failures = []
-    for record in event.get("Records", []):
+    records = event.get("Records", [])
+    log("info", "lot reçu", size=len(records), correlationIds=[correlation_of(r) for r in records])
+    for record in records:
         cid = None
         try:
             order = json.loads(record["body"])
