@@ -5,3 +5,10 @@
 *.pem
 tls.key
 .env
+
+# TD2
+node_modules/
+dist/
+*.zip
+loadtest/summary.json
+__pycache__/

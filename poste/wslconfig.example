@@ -1,0 +1,10 @@
+# Modèle de %USERPROFILE%\.wslconfig (C:\Users\<vous>\.wslconfig)
+# Limite la mémoire de WSL2, donc de Docker Desktop. Par défaut WSL2 prend la moitié de la RAM.
+# Adaptez memory à votre machine, puis dans PowerShell : wsl --shutdown, et relancez Docker Desktop.
+#
+# TD 2 et TD 4 : 4 à 6 Go suffisent.
+# TD 3 (k3d, Argo CD, Prometheus, Grafana, Loki) : 8 Go si la machine a 16 Go ou plus.
+# Machine de 8 Go : mettre 5GB et fermer le navigateur pendant le TD.
+[wsl2]
+memory=6GB
+swap=2GB
