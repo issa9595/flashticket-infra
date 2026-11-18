@@ -1,0 +1,18 @@
+# LocalStack : émulateur AWS local pour le TD2.
+# Image épinglée (édition communautaire) : ne pas passer à « latest », qui peut exiger un compte.
+services:
+  localstack:
+    image: localstack/localstack:3.8.1
+    container_name: flashticket-localstack
+    ports:
+      - "127.0.0.1:4566:4566"
+    environment:
+      SERVICES: sqs,dynamodb,kinesis,lambda,iam,logs,sts
+      DEBUG: "0"
+      LAMBDA_RUNTIME_ENVIRONMENT_TIMEOUT: "60"
+      AWS_DEFAULT_REGION: eu-west-3
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "localstack-data:/var/lib/localstack"
+volumes:
+  localstack-data:
